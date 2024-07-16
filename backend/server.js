@@ -5,6 +5,7 @@ import chatRoutes from "./routes/chatRoutes.js";
 import { errorHandler } from "./middlewares/errorMiddleware.js";
 import cookieParser from "cookie-parser";
 import { createUser } from "./seeders/user.js";
+import { corsOptions } from "./utils/corsOptions.js";
 
 import {
   createMessages,
@@ -18,16 +19,14 @@ import Message from "./models/message.model.js";
 import Chat from './models/chat.model.js'
 import cors from "cors";
 
+
 import { v4 as uuid } from "uuid";
 import { socketAuthenticator } from "./utils/helpers.js";
 
 const app = express();
 const server = createServer(app);
 const io = new Server(server, {
-  cors: {
-    origin: "http://localhost:5173",
-    credentials: true,
-  },
+  cors: corsOptions
 });
 
 connectDB();
@@ -42,12 +41,7 @@ app.use(express.json());
 app.use(express.urlencoded());
 app.use(cookieParser());
 
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-    credentials: true,
-  })
-);
+app.use(cors(corsOptions));
 
 app.use("/user", userRoutes);
 app.use("/chat", chatRoutes);
@@ -104,8 +98,8 @@ io.on("connection", (socket) => {
       console.log(error);
     }
   });
-  const leaveRoom = ({roomId,peerId})=>{
-    if(rooms[roomId])  rooms[roomId] = rooms[roomId].filter((id) => id !== peerId)
+  const leaveRoom = ({ roomId, peerId }) => {
+    if (rooms[roomId]) rooms[roomId] = rooms[roomId].filter((id) => id !== peerId)
     socket.to(roomId).emit("user-disconnected", peerId)
   }
   const joinRoom = ({ roomId, peerId }) => {
@@ -116,19 +110,19 @@ io.on("connection", (socket) => {
     }
 
     socket?.join(roomId);
-    socket.to(roomId).emit("user-joined",{peerId})
+    socket.to(roomId).emit("user-joined", { peerId })
     socket.emit("get-users", {
       roomId,
       participants: rooms[roomId],
     });
     console.log("user joined the room", roomId, peerId);
 
-    socket.on("disconnect",()=>{
+    socket.on("disconnect", () => {
       console.log(peerId)
-      leaveRoom({roomId,peerId})
+      leaveRoom({ roomId, peerId })
     })
   };
-  
+
   socket.on("join-room", joinRoom);
 
   socket.on("create-room", () => {
